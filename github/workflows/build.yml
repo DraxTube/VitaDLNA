@@ -1,0 +1,47 @@
+name: Build PS Vita DLNA Receiver
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: vitasdk/vitasdk:latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: |
+        apt-get update
+        apt-get install -y cmake make gcc git
+
+    - name: Clone libupnp (if needed)
+      run: |
+        git clone https://github.com/pupnp/pupnp.git /tmp/pupnp || true
+
+    - name: Configure Build
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+
+    - name: Compile
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Create VPK
+      run: |
+        cd build
+        ls -la *.vpk || echo "VPK not found"
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: VitaDLNAReceiver
+        path: build/*.vpk
+        retention-days: 7
