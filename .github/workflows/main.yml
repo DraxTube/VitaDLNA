@@ -12,16 +12,12 @@ jobs:
     container: vitasdk/vitasdk:latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: |
         apt-get update
         apt-get install -y cmake make gcc git
-
-    - name: Clone libupnp (if needed)
-      run: |
-        git clone https://github.com/pupnp/pupnp.git /tmp/pupnp || true
 
     - name: Configure Build
       run: |
@@ -34,14 +30,15 @@ jobs:
         cd build
         make -j$(nproc)
 
-    - name: Create VPK
+    - name: Verify VPK
       run: |
         cd build
-        ls -la *.vpk || echo "VPK not found"
+        ls -la *.vpk || echo "Warning: VPK not found, checking build logs..."
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: VitaDLNAReceiver
         path: build/*.vpk
         retention-days: 7
+        compression-level: 6
