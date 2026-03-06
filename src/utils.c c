@@ -1,0 +1,136 @@
+#include <psp2/kernel/processmgr.h>
+#include <psp2/display.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+
+#include "utils.h"
+
+static char debug_buffer[4096];
+static int debug_line = 0;
+
+void debug_print(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(debug_buffer, sizeof(debug_buffer), format, args);
+    va_end(args);
+    
+    // In produzione, usa una libreria grafica per stampare su schermo
+    // Per ora, stampa su stdout (visibile nei log)
+    printf("[VitaDLNA] %s\n", debug_buffer);
+    
+    debug_line++;
+    if (debug_line > 20) debug_line = 0;
+}
+
+void sanitize_string(char *str, int max_len) {
+    if (!str || max_len <= 0) return;
+    
+    for (int i = 0; i < max_len && str[i] != '\0'; i++) {
+        if (str[i] < 32 || str[i] > 126) {
+            str[i] = ' ';
+        }
+    }
+}
+
+int extract_url_from_soap(const char *soap_request, char *url_buffer, int buffer_size) {
+    if (!soap_request || !url_buffer || buffer_size <= 0) return -1;
+    
+    const char *start = strstr(soap_request, "<CurrentURI>");
+    if (!start) {
+        start = strstr(soap_request, "CurrentURI");
+    }
+    
+    if (!start) return -1;
+    
+    start += strlen("<CurrentURI>");
+    
+    const char *end = strstr(start, "</CurrentURI>");
+    if (!end) return -1;
+    
+    int url_len = end - start;
+    if (url_len >= buffer_size) url_len = buffer_size - 1;
+    
+    strncpy(url_buffer, start, url_len);
+    url_buffer[url_len] = '\0';
+    
+    sanitize_string(url_buffer, buffer_size);
+    
+    return 0;
+}
+
+int extract_action_from_soap(const char *soap_request, char *action_buffer, int buffer_size) {
+    if (!soap_request || !action_buffer || buffer_size <= 0) return -1;
+    
+    // Cerca nomi di azione comuni
+    const char *actions[] = {
+        "SetAVTransportURI",
+        "Play",
+        "Stop",
+        "Pause",
+        "GetPositionInfo",
+        "GetTransportInfo",
+        NULL
+    };
+    
+    for (int i = 0; actions[i] != NULL; i++) {
+        if (strstr(soap_request, actions[i])) {
+            strncpy(action_buffer, actions[i], buffer_size - 1);
+            action_buffer[buffer_size - 1] = '\0';
+            return 0;
+        }
+    }
+    
+    return -1;
+}
+
+int generate_soap_response(const char *action, char *response_buffer, int buffer_size) {
+    if (!action || !response_buffer || buffer_size <= 0) return -1;
+    
+    snprintf(response_buffer, buffer_size,
+             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n"
+             "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\">\r\n"
+             "<s:Body>\r\n"
+             "<u:%sResponse xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\"/>\r\n"
+             "</s:Body>\r\n"
+             "</s:Envelope>\r\n",
+             action);
+    
+    return 0;
+}
+
+int generate_device_description(char *xml_buffer, int buffer_size, const char *ip_address) {
+    if (!xml_buffer || buffer_size <= 0 || !ip_address) return -1;
+    
+    snprintf(xml_buffer, buffer_size,
+             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n"
+             "<root xmlns=\"urn:schemas-upnp-org:device-1-0\">\r\n"
+             "  <device>\r\n"
+             "    <deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>\r\n"
+             "    <friendlyName>PS Vita DLNA</friendlyName>\r\n"
+             "    <UDN>uuid:VitaDLNA-001</UDN>\r\n"
+             "  </device>\r\n"
+             "</root>\r\n");
+    
+    return 0;
+}
+
+int format_time_ms(int ms, char *time_buffer, int buffer_size) {
+    if (!time_buffer || buffer_size < 9) return -1;
+    
+    int seconds = ms / 1000;
+    int minutes = seconds / 60;
+    int hours = minutes / 60;
+    
+    seconds %= 60;
+    minutes %= 60;
+    
+    snprintf(time_buffer, buffer_size, "%d:%02d:%02d", hours, minutes, seconds);
+    return 0;
+}
+
+void log_message(const char *level, const char *message) {
+    if (!level || !message) return;
+    
+    debug_print("[%s] %s", level, message);
+}
