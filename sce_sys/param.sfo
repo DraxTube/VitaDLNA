@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<psf>
+  <version type="int">0</version>
+  <attributes type="int">0</attributes>
+  <app_ver type="string">01.00</app_ver>
+  <category type="string">g</category>
+  <content_id type="string">VDLNA0001</content_id>
+  <format type="int">0</format>
+  <parental_level type="int">0</parental_level>
+  <title type="string">VitaDLNA Receiver</title>
+  <title_id type="string">VDLNA0001</title_id>
+</psf>
