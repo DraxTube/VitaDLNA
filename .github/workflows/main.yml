@@ -14,10 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Dependencies
+    - name: Install Dependencies (Alpine)
       run: |
-        apt-get update
-        apt-get install -y cmake make gcc git
+        apk update
+        apk add --no-cache cmake make gcc git
 
     - name: Configure Build
       run: |
@@ -33,7 +33,7 @@ jobs:
     - name: Verify VPK
       run: |
         cd build
-        ls -la *.vpk || echo "Warning: VPK not found, checking build logs..."
+        ls -la *.vpk || echo "Warning: VPK not found"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
